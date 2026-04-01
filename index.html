@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Log1">
 <title>Log1</title>
+<script src="msal-browser.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -263,51 +264,16 @@ function goToConfig() {
 function goToAuth() { setErr('authError',''); showScreen('screenAuth'); }
 
 // ── MSAL ───────────────────────────────────────────────────────────────
-// Load MSAL 2.x (stable, widely tested with personal accounts + PKCE)
-// MSAL v2 — the last version officially hosted on Microsoft's CDN
-// v3+ dropped CDN support entirely, so v2 is the correct choice here
-const MSAL_URLS = [
-  'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js',    // US West
-  'https://alcdn.msftauth.net/browser/2.38.3/js/msal-browser.min.js',  // Europe fallback
-];
-const SCOPES   = ['Files.ReadWrite', 'User.Read'];
+// msal-browser.min.js is loaded as a local script tag in <head>
+// No CDN, no dynamic loading — it's just a file in the same repo.
+const SCOPES = ['Files.ReadWrite', 'User.Read'];
 
-let pca       = null;   // PublicClientApplication
-let pcaReady  = false;
+let pca      = null;
+let pcaReady = false;
 
-function loadMsalScript() {
-  return new Promise((resolve, reject) => {
-    if (window.msal) { resolve(); return; }
-
-    let attempts = 0;
-
-    function tryLoad(url) {
-      const s   = document.createElement('script');
-      s.src     = url;
-      s.onload  = () => {
-        if (window.msal) { resolve(); }
-        else { tryNext(new Error('MSAL object not found after load')); }
-      };
-      s.onerror = () => tryNext(new Error(`Failed to load from ${url}`));
-      document.head.appendChild(s);
-    }
-
-    function tryNext(err) {
-      attempts++;
-      if (attempts < MSAL_URLS.length) {
-        tryLoad(MSAL_URLS[attempts]);
-      } else {
-        reject(new Error('Could not load MSAL from any CDN. Please check your internet connection and try again.'));
-      }
-    }
-
-    tryLoad(MSAL_URLS[0]);
-  });
-}
-
-async function getPCA() {
+function getPCA() {
   if (pcaReady && pca) return pca;
-  await loadMsalScript();
+  if (!window.msal) throw new Error('MSAL library not loaded. Make sure msal-browser.min.js is in the same folder as index.html.');
   pca = new msal.PublicClientApplication({
     auth: {
       clientId:    cfg.clientId,
@@ -316,7 +282,6 @@ async function getPCA() {
     },
     cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true },
   });
-  // Note: MSAL v2 does NOT require initialize() — that is v3 only
   pcaReady = true;
   return pca;
 }
@@ -324,7 +289,7 @@ async function getPCA() {
 async function signIn() {
   setErr('authError','');
   try {
-    const instance = await getPCA();
+    const instance = getPCA();
     await instance.loginRedirect({ scopes: SCOPES });
   } catch(e) {
     console.error('signIn:', e);
@@ -334,13 +299,13 @@ async function signIn() {
 
 async function signOut() {
   try {
-    const instance = await getPCA();
+    const instance = getPCA();
     await instance.logoutRedirect({ postLogoutRedirectUri: cfg.redirectUri });
   } catch(e) { console.error('signOut:', e); }
 }
 
 async function getToken() {
-  const instance = await getPCA();
+  const instance = getPCA();
   const accounts = instance.getAllAccounts();
   if (!accounts.length) throw new Error('Not signed in — please sign in again.');
   try {
@@ -570,11 +535,10 @@ async function boot() {
   el('cfgFilePath').value    = cfg.filePath;
   el('cfgSheetName').value   = cfg.sheetName;
 
-  // Show auth screen immediately while MSAL loads
   showScreen('screenAuth');
 
   try {
-    const instance = await getPCA();
+    const instance = getPCA();
 
     // Process any redirect coming back from Microsoft login
     const result = await instance.handleRedirectPromise();
