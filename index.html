@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Log1">
+<title>Log1</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #13120f; --surface: #1e1c18; --surface2: #272420; --border: #333028;
+  --accent: #d4a853; --accent-dim: #a07c38; --text: #ede8df; --muted: #6b6456;
+  --green: #7ab87a; --red: #c47a5a; --r: 8px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+html, body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 13px; min-height: 100vh; overscroll-behavior: none; }
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: flex; flex-direction: column; }
+#screenConfig, #screenAuth { align-items: center; justify-content: center; padding: 40px 24px; text-align: center; }
+.logo-large { font-family: 'Playfair Display', serif; font-size: 44px; font-style: italic; color: var(--accent); margin-bottom: 4px; }
+.logo-sub { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 40px; }
+.cfg-block { width: 100%; max-width: 390px; text-align: left; margin-bottom: 20px; }
+.cfg-block-title { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; padding-bottom: 7px; border-bottom: 1px solid var(--border); }
+.cfg-field { margin-bottom: 12px; }
+.cfg-field label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.cfg-field input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 11px 13px; outline: none; transition: border-color 0.15s; }
+.cfg-field input:focus { border-color: var(--accent); }
+.cfg-hint { font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+.cfg-hint strong { color: var(--accent-dim); }
+.btn-primary { width: 100%; max-width: 390px; background: var(--accent); color: var(--bg); border: none; border-radius: var(--r); font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; padding: 15px; cursor: pointer; transition: background 0.15s; }
+.btn-primary:hover { background: var(--accent-dim); }
+.btn-primary:active { transform: scale(0.98); }
+.err-msg { margin-top: 14px; font-size: 11px; color: var(--red); max-width: 390px; line-height: 1.5; min-height: 16px; }
+.auth-desc { font-size: 11px; color: var(--muted); margin-bottom: 36px; line-height: 1.7; max-width: 290px; }
+.btn-msft { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; max-width: 320px; background: #2f6fcb; color: white; border: none; border-radius: var(--r); font-family: 'IBM Plex Mono', monospace; font-size: 13px; padding: 15px 20px; cursor: pointer; transition: background 0.15s; }
+.btn-msft:hover { background: #2560b8; }
+.text-link { margin-top: 20px; font-size: 10px; color: var(--muted); cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; text-decoration: underline; text-underline-offset: 3px; }
+.header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 18px 12px; position: sticky; top: 0; z-index: 20; }
+.header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.header-logo { font-family: 'Playfair Display', serif; font-size: 20px; font-style: italic; color: var(--accent); }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+.status-dot.ok { background: var(--green); }
+.status-dot.err { background: var(--red); }
+.status-dot.busy { background: var(--accent); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.record-badge { font-size: 10px; padding: 2px 8px; border-radius: 4px; background: var(--surface2); color: var(--muted); border: 1px solid var(--border); letter-spacing: 0.05em; }
+.record-badge.existing { border-color: var(--accent-dim); color: var(--accent); }
+.record-badge.new-row { border-color: var(--green); color: var(--green); }
+.icon-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 3px; transition: color 0.15s; }
+.icon-btn:hover { color: var(--accent); }
+.date-nav { display: flex; align-items: center; gap: 8px; }
+.nav-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 17px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+.nav-btn:hover, .nav-btn:active { border-color: var(--accent); color: var(--accent); }
+.date-center { flex: 1; text-align: center; }
+.date-main { font-size: 13px; color: var(--text); }
+.today-tag { display: inline-block; background: var(--accent); color: var(--bg); font-size: 9px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 6px; border-radius: 8px; margin-left: 5px; vertical-align: middle; }
+.date-year { font-size: 10px; color: var(--muted); margin-top: 1px; text-transform: uppercase; letter-spacing: 0.08em; }
+.content { padding-bottom: 110px; }
+.section { padding: 15px 18px 0; }
+.sec-label { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; padding-bottom: 7px; border-bottom: 1px solid var(--border); }
+.field { margin-bottom: 9px; }
+.field label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.field input, .field textarea, .field select { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 13px; padding: 10px 12px; outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+.field textarea { resize: none; height: 60px; }
+.field select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b6456'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 10px; background-color: var(--surface); padding-right: 32px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.habits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 9px; }
+.habit { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 11px 12px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: space-between; user-select: none; -webkit-user-select: none; }
+.habit.on { border-color: var(--green); background: rgba(122,184,122,0.07); }
+.habit-label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.toggle-track { width: 22px; height: 13px; border-radius: 7px; background: var(--border); position: relative; transition: background 0.2s; flex-shrink: 0; }
+.toggle-track::after { content: ''; position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); top: 2px; left: 2px; transition: all 0.2s; }
+.habit.on .toggle-track { background: var(--green); }
+.habit.on .toggle-track::after { background: white; left: 11px; }
+.divider { height: 1px; background: var(--border); margin: 14px 18px 0; }
+.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: linear-gradient(to bottom, transparent, var(--bg) 30%); padding: 24px 18px calc(18px + var(--safe-bottom)); z-index: 20; }
+.save-btn { width: 100%; background: var(--accent); color: var(--bg); border: none; border-radius: var(--r); font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; padding: 15px; cursor: pointer; transition: all 0.2s; }
+.save-btn:active { transform: scale(0.98); }
+.save-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.save-btn.busy { background: var(--accent-dim); }
+.save-btn.success { background: var(--green); color: white; }
+.toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%) translateY(-8px); background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: 11px; letter-spacing: 0.05em; padding: 9px 18px; border-radius: 20px; opacity: 0; transition: all 0.22s; pointer-events: none; white-space: nowrap; z-index: 99; max-width: 90vw; text-align: center; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok  { border-color: var(--green); color: var(--green); }
+.toast.err { border-color: var(--red);   color: var(--red);   }
+#loadingOverlay { display: none; position: fixed; inset: 0; background: rgba(19,18,15,0.82); align-items: center; justify-content: center; flex-direction: column; gap: 14px; z-index: 80; }
+#loadingOverlay.show { display: flex; }
+.spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.75s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-msg { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<!-- CONFIG -->
+<div id="screenConfig" class="screen">
+  <div class="logo-large">Log1</div>
+  <div class="logo-sub">One-time setup</div>
+  <div class="cfg-block">
+    <div class="cfg-block-title">Azure App Registration</div>
+    <div class="cfg-field">
+      <label>Client ID</label>
+      <input type="text" id="cfgClientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div class="cfg-hint">Azure Portal → App registrations → your app → <strong>Application (client) ID</strong></div>
+    </div>
+    <div class="cfg-field">
+      <label>Redirect URI</label>
+      <input type="text" id="cfgRedirectUri" placeholder="https://yourusername.github.io/log1/" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div class="cfg-hint">Must match Azure exactly, including trailing slash.</div>
+    </div>
+  </div>
+  <div class="cfg-block">
+    <div class="cfg-block-title">Excel File</div>
+    <div class="cfg-field">
+      <label>OneDrive File Path</label>
+      <input type="text" id="cfgFilePath" placeholder="/Log1.xlsx" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div class="cfg-hint">Path from OneDrive root, starting with <strong>/</strong></div>
+    </div>
+    <div class="cfg-field">
+      <label>Sheet Tab Name</label>
+      <input type="text" id="cfgSheetName" placeholder="Log26" autocomplete="off" autocorrect="off" spellcheck="false">
+      <div class="cfg-hint">Exact tab name, case-sensitive.</div>
+    </div>
+  </div>
+  <button class="btn-primary" onclick="saveConfig()">Save &amp; Continue →</button>
+  <div class="err-msg" id="cfgError"></div>
+</div>
+
+<!-- AUTH -->
+<div id="screenAuth" class="screen">
+  <div class="logo-large">Log1</div>
+  <div class="auth-desc">Sign in with your personal Microsoft account to connect to your OneDrive Excel file.</div>
+  <button class="btn-msft" onclick="signIn()">
+    <svg width="18" height="18" viewBox="0 0 21 21" fill="none">
+      <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+      <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+      <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+      <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+    </svg>
+    Sign in with Microsoft
+  </button>
+  <div class="text-link" onclick="goToConfig()">← Edit settings</div>
+  <div class="err-msg" id="authError"></div>
+</div>
+
+<!-- APP -->
+<div id="screenApp" class="screen">
+  <div class="header">
+    <div class="header-row">
+      <div class="header-logo">Log1</div>
+      <div class="header-right">
+        <span class="record-badge" id="recordBadge">—</span>
+        <div class="status-dot" id="statusDot"></div>
+        <button class="icon-btn" title="Sign out" onclick="signOut()">⏻</button>
+        <button class="icon-btn" title="Settings" onclick="goToConfig()">⚙</button>
+      </div>
+    </div>
+    <div class="date-nav">
+      <button class="nav-btn" onclick="shiftDate(-1)">‹</button>
+      <div class="date-center">
+        <div class="date-main" id="dateMain">—</div>
+        <div class="date-year" id="dateYear">—</div>
+      </div>
+      <button class="nav-btn" onclick="shiftDate(1)">›</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="section">
+      <div class="sec-label">Meals</div>
+      <div class="field"><label>Breakfast</label><input type="text" id="fBreakfast" placeholder="e.g. Travel: Hotel eggs" autocomplete="off"></div>
+      <div class="field"><label>Lunch</label>    <input type="text" id="fLunch"     placeholder="" autocomplete="off"></div>
+      <div class="field"><label>Dinner</label>   <input type="text" id="fDinner"    placeholder="" autocomplete="off"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="section">
+      <div class="sec-label">Drinks</div>
+      <div class="field"><label>Caffeine (cups)</label><input type="text" inputmode="decimal" id="fCaffeine" placeholder="0" autocomplete="off"></div>
+      <div class="field"><label>Booze</label><input type="text" id="fBooze" placeholder="2 - Beer, Wine" autocomplete="off"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="section">
+      <div class="sec-label">Activity &amp; Notes</div>
+      <div class="field"><label>Exercise</label><input type="text" id="fExercise" placeholder="e.g. PYC / 4 miles" autocomplete="off"></div>
+      <div class="field"><label>Notes</label><textarea id="fNotes" placeholder="anything else..."></textarea></div>
+    </div>
+    <div class="divider"></div>
+    <div class="section">
+      <div class="sec-label">Habits</div>
+      <div class="habits-grid">
+        <div class="habit" id="hVitamins"  onclick="toggleHabit('Vitamins')"> <span class="habit-label">Vitamins</span>  <div class="toggle-track"></div></div>
+        <div class="habit" id="hJournal"   onclick="toggleHabit('Journal')">  <span class="habit-label">Journal</span>   <div class="toggle-track"></div></div>
+        <div class="habit" id="hAI"        onclick="toggleHabit('AI')">        <span class="habit-label">AI</span>        <div class="toggle-track"></div></div>
+        <div class="habit" id="hNighttime" onclick="toggleHabit('Nighttime')"> <span class="habit-label">Nighttime</span> <div class="toggle-track"></div></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section">
+      <div class="sec-label">Location</div>
+      <div class="two-col">
+        <div class="field"><label>Slept in</label><input type="text" id="fSleep" placeholder="e.g. Portland" autocomplete="off"></div>
+        <div class="field">
+          <label>Category</label>
+          <select id="fCat">
+            <option value="Home">Home</option>
+            <option value="Travel">Travel</option>
+            <option value="Road">Road</option>
+            <option value="Out">Out</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-bar">
+    <button class="save-btn" id="saveBtn" onclick="saveEntry()">Save Entry</button>
+  </div>
+</div>
+
+<div id="loadingOverlay"><div class="spinner"></div><div class="loading-msg" id="loadingMsg">Loading…</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ─────────────────────────────────────────────────────────────
+const CFG_KEY = 'log1_cfg_v3';
+let cfg = {};
+
+function loadCfg() {
+  try { cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}'); } catch(e) { cfg = {}; }
+}
+function saveCfg() { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+
+function saveConfig() {
+  setErr('cfgError', '');
+  const clientId    = el('cfgClientId').value.trim();
+  const redirectUri = el('cfgRedirectUri').value.trim();
+  const filePath    = el('cfgFilePath').value.trim();
+  const sheetName   = el('cfgSheetName').value.trim();
+
+  if (!clientId)    return setErr('cfgError', 'Client ID is required.');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId))
+    return setErr('cfgError', 'Client ID should look like: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+  if (!redirectUri) return setErr('cfgError', 'Redirect URI is required.');
+  if (!filePath)    return setErr('cfgError', 'OneDrive file path is required.');
+  if (!sheetName)   return setErr('cfgError', 'Sheet tab name is required.');
+
+  cfg = { clientId, redirectUri, filePath: filePath.startsWith('/') ? filePath : '/'+filePath, sheetName };
+  saveCfg();
+  goToAuth();
+}
+
+function goToConfig() {
+  el('cfgClientId').value    = cfg.clientId    || '';
+  el('cfgRedirectUri').value = cfg.redirectUri || '';
+  el('cfgFilePath').value    = cfg.filePath    || '';
+  el('cfgSheetName').value   = cfg.sheetName   || '';
+  showScreen('screenConfig');
+}
+
+function goToAuth() { setErr('authError',''); showScreen('screenAuth'); }
+
+// ── MSAL ───────────────────────────────────────────────────────────────
+// Load MSAL 2.x (stable, widely tested with personal accounts + PKCE)
+// MSAL v2 — the last version officially hosted on Microsoft's CDN
+// v3+ dropped CDN support entirely, so v2 is the correct choice here
+const MSAL_URLS = [
+  'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js',    // US West
+  'https://alcdn.msftauth.net/browser/2.38.3/js/msal-browser.min.js',  // Europe fallback
+];
+const SCOPES   = ['Files.ReadWrite', 'User.Read'];
+
+let pca       = null;   // PublicClientApplication
+let pcaReady  = false;
+
+function loadMsalScript() {
+  return new Promise((resolve, reject) => {
+    if (window.msal) { resolve(); return; }
+
+    let attempts = 0;
+
+    function tryLoad(url) {
+      const s   = document.createElement('script');
+      s.src     = url;
+      s.onload  = () => {
+        if (window.msal) { resolve(); }
+        else { tryNext(new Error('MSAL object not found after load')); }
+      };
+      s.onerror = () => tryNext(new Error(`Failed to load from ${url}`));
+      document.head.appendChild(s);
+    }
+
+    function tryNext(err) {
+      attempts++;
+      if (attempts < MSAL_URLS.length) {
+        tryLoad(MSAL_URLS[attempts]);
+      } else {
+        reject(new Error('Could not load MSAL from any CDN. Please check your internet connection and try again.'));
+      }
+    }
+
+    tryLoad(MSAL_URLS[0]);
+  });
+}
+
+async function getPCA() {
+  if (pcaReady && pca) return pca;
+  await loadMsalScript();
+  pca = new msal.PublicClientApplication({
+    auth: {
+      clientId:    cfg.clientId,
+      authority:   'https://login.microsoftonline.com/consumers',
+      redirectUri: cfg.redirectUri,
+    },
+    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true },
+  });
+  // Note: MSAL v2 does NOT require initialize() — that is v3 only
+  pcaReady = true;
+  return pca;
+}
+
+async function signIn() {
+  setErr('authError','');
+  try {
+    const instance = await getPCA();
+    await instance.loginRedirect({ scopes: SCOPES });
+  } catch(e) {
+    console.error('signIn:', e);
+    setErr('authError', e.message);
+  }
+}
+
+async function signOut() {
+  try {
+    const instance = await getPCA();
+    await instance.logoutRedirect({ postLogoutRedirectUri: cfg.redirectUri });
+  } catch(e) { console.error('signOut:', e); }
+}
+
+async function getToken() {
+  const instance = await getPCA();
+  const accounts = instance.getAllAccounts();
+  if (!accounts.length) throw new Error('Not signed in — please sign in again.');
+  try {
+    const r = await instance.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+    return r.accessToken;
+  } catch(e) {
+    await instance.acquireTokenRedirect({ scopes: SCOPES, account: accounts[0] });
+    throw new Error('Redirecting to sign in…');
+  }
+}
+
+// ── GRAPH ──────────────────────────────────────────────────────────────
+const GRAPH = 'https://graph.microsoft.com/v1.0';
+
+function excelBase() {
+  return `${GRAPH}/me/drive/root:${encodeURIComponent(cfg.filePath)}:/workbook/worksheets/${encodeURIComponent(cfg.sheetName)}`;
+}
+
+async function gGet(url) {
+  const token = await getToken();
+  const res   = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Graph ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+async function gPatch(url, body) {
+  const token = await getToken();
+  const res   = await fetch(url, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Graph PATCH ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+// ── DATE / DISPLAY ─────────────────────────────────────────────────────
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+let currentDate = new Date();
+currentDate.setHours(0,0,0,0);
+
+function dateKey(d) {
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+function updateDateDisplay() {
+  const d = currentDate;
+  const tag = dateKey(d) === dateKey(new Date()) ? '<span class="today-tag">today</span>' : '';
+  el('dateMain').innerHTML = `${DAYS[d.getDay()]}, ${MONS[d.getMonth()]} ${d.getDate()}${tag}`;
+  el('dateYear').textContent = d.getFullYear();
+}
+
+function shiftDate(n) {
+  currentDate.setDate(currentDate.getDate() + n);
+  updateDateDisplay();
+  loadEntry();
+}
+
+// ── SHEET ──────────────────────────────────────────────────────────────
+// Columns B:R (17 cols), row 3=headers, row 4=data start
+// B=Day C=Date D=Breakfast E=Lunch F=Dinner G=Caffeine H=Booze
+// I=# (formula) J=Notes K=Exercise L=Vitamins M=Journal N=AI
+// O=Nighttime P=Sleep Q=Streak (formula) R=Cat
+// We write B:H, J:P, R — skipping I and Q
+
+let cachedRows = [];
+let cachedCount = 0;
+
+const habits = { Vitamins: false, Journal: false, AI: false, Nighttime: false };
+
+function normDate(raw) {
+  if (!raw && raw !== 0) return '';
+  const s = String(raw).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  const n = parseFloat(s);
+  if (!isNaN(n) && n > 30000) {
+    const d = new Date((n-25569)*86400000);
+    const p = x => String(x).padStart(2,'0');
+    return `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())}`;
+  }
+  return s;
+}
+
+async function fetchRows() {
+  const url  = `${excelBase()}/range(address='${encodeURIComponent('B4:R500')}')`;
+  const data = await gGet(url);
+  cachedRows  = (data.values || []).filter(r => r.some(c => c !== null && c !== ''));
+  cachedCount = cachedRows.length;
+}
+
+function findRow(dk) {
+  for (let i = 0; i < cachedRows.length; i++)
+    if (normDate(cachedRows[i][1]) === dk) return i;
+  return -1;
+}
+
+async function loadEntry() {
+  setDot('busy'); showLoad('Loading…');
+  try {
+    await fetchRows();
+    const idx = findRow(dateKey(currentDate));
+    if (idx >= 0) { fillForm(cachedRows[idx]); setBadge('existing','Existing row'); }
+    else          { clearForm();               setBadge('new-row','New row');      }
+    setDot('ok');
+  } catch(e) {
+    setDot('err'); showToast('Load failed — '+clip(e.message),'err');
+    console.error(e);
+  } finally { hideLoad(); }
+}
+
+function fillForm(row) {
+  const g  = i => row[i] != null ? String(row[i]).trim() : '';
+  const yn = i => ['yes','1','true'].includes(g(i).toLowerCase());
+  el('fBreakfast').value = g(2); el('fLunch').value    = g(3);
+  el('fDinner').value    = g(4); el('fCaffeine').value = g(5);
+  el('fBooze').value     = g(6); el('fNotes').value    = g(8);
+  el('fExercise').value  = g(9);
+  setHabit('Vitamins', yn(10)); setHabit('Journal',   yn(11));
+  setHabit('AI',       yn(12)); setHabit('Nighttime', yn(13));
+  el('fSleep').value = g(14);
+  const cat = g(16); if (cat) el('fCat').value = cat;
+}
+
+function clearForm() {
+  ['fBreakfast','fLunch','fDinner','fCaffeine','fBooze','fNotes','fExercise','fSleep']
+    .forEach(id => { el(id).value = ''; });
+  setHabit('Vitamins',false); setHabit('Journal',false);
+  setHabit('AI',false);       setHabit('Nighttime',false);
+  el('fCat').value = 'Home';
+}
+
+function toggleHabit(k) { setHabit(k, !habits[k]); }
+function setHabit(k, v) {
+  habits[k] = v;
+  const ids = {Vitamins:'hVitamins',Journal:'hJournal',AI:'hAI',Nighttime:'hNighttime'};
+  el(ids[k]).classList.toggle('on', v);
+}
+
+// ── SAVE ───────────────────────────────────────────────────────────────
+async function saveEntry() {
+  const btn = el('saveBtn');
+  btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Saving…';
+  try {
+    const d   = currentDate;
+    const p   = n => String(n).padStart(2,'0');
+    const dk  = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+    const idx = findRow(dk);
+    const row = idx >= 0 ? idx + 4 : cachedCount + 4;
+
+    // B:H — Day, Date, Breakfast, Lunch, Dinner, Caffeine, Booze
+    await patchRange(`B${row}:H${row}`, [[
+      DAYS[d.getDay()], dk,
+      val('fBreakfast'), val('fLunch'), val('fDinner'),
+      val('fCaffeine') || '0', val('fBooze'),
+    ]]);
+    // J:P — Notes, Exercise, Vitamins, Journal, AI, Nighttime, Sleep
+    await patchRange(`J${row}:P${row}`, [[
+      val('fNotes'), val('fExercise'),
+      habits.Vitamins  ? 'Yes':'No',
+      habits.Journal   ? 'Yes':'No',
+      habits.AI        ? 'Yes':'No',
+      habits.Nighttime ? 'Yes':'No',
+      val('fSleep'),
+    ]]);
+    // R — Cat
+    await patchRange(`R${row}`, [[ el('fCat').value ]]);
+
+    if (idx < 0) { cachedCount++; setBadge('existing','Existing row'); }
+    showToast(idx >= 0 ? '✓ Updated' : '✓ Saved', 'ok');
+    btn.classList.remove('busy'); btn.classList.add('success'); btn.textContent = '✓ Saved';
+    setTimeout(() => { btn.classList.remove('success'); btn.textContent='Save Entry'; btn.disabled=false; }, 2200);
+  } catch(e) {
+    setDot('err'); showToast('Save failed — '+clip(e.message),'err');
+    console.error(e);
+    btn.classList.remove('busy'); btn.textContent='Save Entry'; btn.disabled=false;
+  }
+}
+
+async function patchRange(addr, values) {
+  return gPatch(`${excelBase()}/range(address='${encodeURIComponent(addr)}')`, { values });
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────
+const el  = id => document.getElementById(id);
+const val = id => el(id).value.trim();
+const clip = s => s && s.length > 80 ? s.slice(0,80)+'…' : (s||'');
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  el(id).classList.add('active');
+}
+function setDot(s)   { el('statusDot').className = 'status-dot'+(s?' '+s:''); }
+function setBadge(c,t){ const b=el('recordBadge'); b.className='record-badge '+c; b.textContent=t; }
+function setErr(id,m){ el(id).textContent = m; }
+function showToast(msg, type) {
+  const t = el('toast');
+  t.textContent = msg;
+  t.className = 'toast show'+(type?' '+type:'');
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>{ t.className='toast'; }, 3400);
+}
+function showLoad(m){ el('loadingMsg').textContent=m||'Loading…'; el('loadingOverlay').classList.add('show'); }
+function hideLoad() { el('loadingOverlay').classList.remove('show'); }
+
+// ── BOOT ───────────────────────────────────────────────────────────────
+async function launchApp() {
+  showScreen('screenApp');
+  updateDateDisplay();
+  await loadEntry();
+}
+
+async function boot() {
+  loadCfg();
+
+  if (!cfg.clientId || !cfg.redirectUri || !cfg.filePath || !cfg.sheetName) {
+    goToConfig(); return;
+  }
+
+  // Pre-fill config fields
+  el('cfgClientId').value    = cfg.clientId;
+  el('cfgRedirectUri').value = cfg.redirectUri;
+  el('cfgFilePath').value    = cfg.filePath;
+  el('cfgSheetName').value   = cfg.sheetName;
+
+  // Show auth screen immediately while MSAL loads
+  showScreen('screenAuth');
+
+  try {
+    const instance = await getPCA();
+
+    // Process any redirect coming back from Microsoft login
+    const result = await instance.handleRedirectPromise();
+    if (result) {
+      await launchApp(); return;
+    }
+
+    // Already have a cached account — go straight to app
+    if (instance.getAllAccounts().length > 0) {
+      await launchApp();
+    }
+    // Otherwise stay on auth screen for user to tap Sign In
+
+  } catch(e) {
+    console.error('Boot error:', e);
+    setErr('authError', 'Startup error: ' + e.message);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
