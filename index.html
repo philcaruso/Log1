@@ -202,18 +202,7 @@ html, body { background: var(--bg); color: var(--text); font-family: 'IBM Plex M
     <div class="divider"></div>
     <div class="section">
       <div class="sec-label">Location</div>
-      <div class="two-col">
-        <div class="field"><label>Slept in</label><input type="text" id="fSleep" placeholder="e.g. Portland" autocomplete="off"></div>
-        <div class="field">
-          <label>Category</label>
-          <select id="fCat">
-            <option value="Home">Home</option>
-            <option value="Travel">Travel</option>
-            <option value="Road">Road</option>
-            <option value="Out">Out</option>
-          </select>
-        </div>
-      </div>
+      <div class="field"><label>Slept in</label><input type="text" id="fSleep" placeholder="e.g. Portland" autocomplete="off"></div>
     </div>
   </div>
   <div class="bottom-bar">
@@ -431,7 +420,6 @@ function fillForm(row) {
   setHabit('Vitamins', yn(10)); setHabit('Journal',   yn(11));
   setHabit('AI',       yn(12)); setHabit('Nighttime', yn(13));
   el('fSleep').value = g(14);
-  const cat = g(16); if (cat) el('fCat').value = cat;
 }
 
 function clearForm() {
@@ -439,7 +427,6 @@ function clearForm() {
     .forEach(id => { el(id).value = ''; });
   setHabit('Vitamins',false); setHabit('Journal',false);
   setHabit('AI',false);       setHabit('Nighttime',false);
-  el('fCat').value = 'Home';
 }
 
 function toggleHabit(k) { setHabit(k, !habits[k]); }
@@ -475,9 +462,6 @@ async function saveEntry() {
       habits.Nighttime ? 'Yes':'No',
       val('fSleep'),
     ]]);
-    // R — Cat
-    await patchRange(`R${row}`, [[ el('fCat').value ]]);
-
     if (idx < 0) { cachedCount++; setBadge('existing','Existing row'); }
     showToast(idx >= 0 ? '✓ Updated' : '✓ Saved', 'ok');
     btn.classList.remove('busy'); btn.classList.add('success'); btn.textContent = '✓ Saved';
